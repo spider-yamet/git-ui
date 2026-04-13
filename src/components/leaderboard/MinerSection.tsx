@@ -2,7 +2,12 @@ import React, { useState } from 'react';
 import { Box, Card, Typography, Grid } from '@mui/material';
 import { MinerCard } from './MinerCard';
 import { STATUS_COLORS } from '../../theme';
-import { type MinerStats, type RankColorSet, FONTS } from './types';
+import {
+  type MinerStats,
+  type RankColorSet,
+  type LeaderboardVariant,
+  FONTS,
+} from './types';
 
 interface MinerSectionProps {
   title?: string;
@@ -10,6 +15,7 @@ interface MinerSectionProps {
   color: RankColorSet;
   onSelectMiner: (githubId: string) => void;
   defaultExpanded?: boolean;
+  variant?: LeaderboardVariant;
 }
 
 export const MinerSection: React.FC<MinerSectionProps> = ({
@@ -18,6 +24,7 @@ export const MinerSection: React.FC<MinerSectionProps> = ({
   color,
   onSelectMiner,
   defaultExpanded = false,
+  variant = 'oss',
 }) => {
   const [expanded, setExpanded] = useState(defaultExpanded);
 
@@ -54,6 +61,7 @@ export const MinerSection: React.FC<MinerSectionProps> = ({
             <Grid item xs={12} sm={12} md={6} lg={4} xl={4} key={miner.hotkey}>
               <MinerCard
                 miner={miner}
+                variant={variant}
                 onClick={() =>
                   onSelectMiner(miner.githubId || miner.author || '')
                 }

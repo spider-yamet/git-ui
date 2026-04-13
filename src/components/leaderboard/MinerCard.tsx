@@ -3,14 +3,19 @@ import { Box, Card, Typography, Avatar } from '@mui/material';
 import ReactECharts from 'echarts-for-react';
 import { useMinerGithubData, useMinerPRs } from '../../api';
 import { CHART_COLORS, STATUS_COLORS } from '../../theme';
-import { type MinerStats, FONTS } from './types';
+import { type MinerStats, type LeaderboardVariant, FONTS } from './types';
 
 interface MinerCardProps {
   miner: MinerStats;
   onClick: () => void;
+  variant?: LeaderboardVariant;
 }
 
-export const MinerCard: React.FC<MinerCardProps> = ({ miner, onClick }) => {
+export const MinerCard: React.FC<MinerCardProps> = ({
+  miner,
+  onClick,
+  variant = 'oss',
+}) => {
   // Helper to check for numeric IDs or missing values
   const isNumericId = (val: string | undefined) => !val || /^\d+$/.test(val);
 
@@ -32,6 +37,7 @@ export const MinerCard: React.FC<MinerCardProps> = ({ miner, onClick }) => {
   const borderColor = isEligible
     ? 'rgba(63, 185, 80, 0.3)'
     : 'rgba(48, 54, 61, 0.4)';
+  const showRankBadge = typeof miner.rank === 'number';
 
   if (!isEligible) {
     return (
@@ -65,6 +71,19 @@ export const MinerCard: React.FC<MinerCardProps> = ({ miner, onClick }) => {
             opacity: 0.7,
           }}
         />
+        {variant === 'discoveries' && showRankBadge && (
+          <Typography
+            sx={{
+              fontFamily: FONTS.mono,
+              fontSize: '0.7rem',
+              fontWeight: 700,
+              color: '#8b949e',
+              minWidth: 28,
+            }}
+          >
+            #{miner.rank}
+          </Typography>
+        )}
         <Typography
           sx={{
             fontFamily: FONTS.mono,
@@ -131,7 +150,7 @@ export const MinerCard: React.FC<MinerCardProps> = ({ miner, onClick }) => {
       <MinerCardStats miner={miner} credibilityPercent={credibilityPercent} />
 
       {/* Footer: Stats Grid */}
-      <MinerCardFooter miner={miner} />
+      <MinerCardFooter miner={miner} variant={variant} />
     </Card>
   );
 };
@@ -327,60 +346,148 @@ const MinerCardStats: React.FC<MinerCardStatsProps> = ({
 
 interface MinerCardFooterProps {
   miner: MinerStats;
+  variant: LeaderboardVariant;
 }
 
-const MinerCardFooter: React.FC<MinerCardFooterProps> = ({ miner }) => (
+const MinerCardFooter: React.FC<MinerCardFooterProps> = ({ miner, variant }) => (
+  <Box
+    sx={{
+      display: 'flex',
+      flexDirection: 'column',
+      gap: variant === 'discoveries' ? 1 : 0,
+      backgroundColor: 'rgba(0,0,0,0.2)',
+      borderRadius: 1.5,
+      p: 1,
+    }}
+  >
+    <StatsSection
+      title="PRs"
+      stats={[
+        {
+          label: 'Merged',
+          value: miner.totalMergedPrs || 0,
+          color: STATUS_COLORS.merged,
+        },
+        { label: 'Open', value: miner.totalOpenPrs || 0, color: '#c9d1d9' },
+        { label: 'Closed', value: miner.totalClosedPrs || 0, color: '#f85149' },
+      ]}
+      score={Number(miner.totalScore).toFixed(2)}
+      showScore
+    />
+    {variant === 'discoveries' && (
+      <StatsSection
+        title="Issues"
+        stats={[
+          {
+            label: 'Solved',
+            value: miner.totalSolvedIssues || 0,
+            color: STATUS_COLORS.merged,
+          },
+          { label: 'Open', value: miner.totalOpenIssues || 0, color: '#c9d1d9' },
+          {
+            label: 'Closed',
+            value: miner.totalClosedIssues || 0,
+            color: '#f85149',
+          },
+        ]}
+      />
+    )}
+  </Box>
+);
+
+interface StatsSectionProps {
+  title: string;
+  stats: StatItemProps[];
+  score?: string;
+  showScore?: boolean;
+}
+
+const StatsSection: React.FC<StatsSectionProps> = ({
+  title,
+  stats,
+  score,
+  showScore = false,
+}) => (
   <Box
     sx={{
       display: 'grid',
       gridTemplateColumns: '1fr 1fr 1fr auto',
       gap: 1,
-      backgroundColor: 'rgba(0,0,0,0.2)',
-      borderRadius: 1.5,
-      p: 1,
       alignItems: 'center',
+      pt: showScore ? 0 : 0.75,
+      borderTop: showScore ? 'none' : '1px solid rgba(255,255,255,0.06)',
     }}
   >
-    <StatItem
-      label="Merged"
-      value={miner.totalMergedPrs || 0}
-      color={STATUS_COLORS.merged}
-    />
-    <StatItem label="Open" value={miner.totalOpenPrs || 0} color="#c9d1d9" />
-    <StatItem
-      label="Closed"
-      value={miner.totalClosedPrs || 0}
-      color="#f85149"
-    />
-    <Box
-      sx={{
-        textAlign: 'right',
-        borderLeft: '1px solid rgba(255,255,255,0.1)',
-        pl: 1.5,
-      }}
-    >
-      <Typography
+    {stats.map((stat) => (
+      <StatItem
+        key={stat.label}
+        label={stat.label}
+        value={stat.value}
+        color={stat.color}
+        title={title}
+      />
+    ))}
+    {showScore ? (
+      <Box
         sx={{
-          fontFamily: FONTS.mono,
-          fontSize: '0.6rem',
-          color: STATUS_COLORS.open,
-          textTransform: 'uppercase',
-          mb: 0.2,
+          textAlign: 'right',
+          borderLeft: '1px solid rgba(255,255,255,0.1)',
+          pl: 1.5,
         }}
       >
-        Score
-      </Typography>
-      <Typography
+        <Typography
+          sx={{
+            fontFamily: FONTS.mono,
+            fontSize: '0.6rem',
+            color: STATUS_COLORS.open,
+            textTransform: 'uppercase',
+            mb: 0.2,
+          }}
+        >
+          Score
+        </Typography>
+        <Typography
+          sx={{
+            fontFamily: FONTS.mono,
+            fontSize: '0.9rem',
+            color: '#e6edf3',
+            fontWeight: 700,
+          }}
+        >
+          {score}
+        </Typography>
+      </Box>
+    ) : (
+      <Box
         sx={{
-          fontFamily: FONTS.mono,
-          fontSize: '0.9rem',
-          color: '#e6edf3',
-          fontWeight: 700,
+          textAlign: 'right',
+          borderLeft: '1px solid rgba(255,255,255,0.1)',
+          pl: 1.5,
         }}
       >
-        {Number(miner.totalScore).toFixed(2)}
-      </Typography>
-    </Box>
+        <Typography
+          sx={{
+            fontFamily: FONTS.mono,
+            fontSize: '0.6rem',
+            color: STATUS_COLORS.open,
+            textTransform: 'uppercase',
+            mb: 0.2,
+          }}
+        >
+          {title}
+        </Typography>
+        <Typography
+          sx={{
+            fontFamily: FONTS.mono,
+            fontSize: '0.9rem',
+            color: '#e6edf3',
+            fontWeight: 700,
+          }}
+        >
+          {stats.reduce((sum, stat) => sum + stat.value, 0)}
+        </Typography>
+      </Box>
+    )}
   </Box>
 );
 
@@ -388,10 +495,25 @@ interface StatItemProps {
   label: string;
   value: number;
   color: string;
+  title?: string;
 }
 
-const StatItem: React.FC<StatItemProps> = ({ label, value, color }) => (
+const StatItem: React.FC<StatItemProps> = ({ label, value, color, title }) => (
   <Box>
+    {title && (
+      <Typography
+        sx={{
+          fontFamily: FONTS.mono,
+          fontSize: '0.55rem',
+          color: 'rgba(139, 148, 158, 0.8)',
+          textTransform: 'uppercase',
+          mb: 0.15,
+          letterSpacing: '0.04em',
+        }}
+      >
+        {title}
+      </Typography>
+    )}
     <Typography
       sx={{
         fontFamily: FONTS.mono,

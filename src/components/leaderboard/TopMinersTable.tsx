@@ -10,7 +10,12 @@ import SearchIcon from '@mui/icons-material/Search';
 import { SectionCard } from './SectionCard';
 import { MinerSection } from './MinerSection';
 import { STATUS_COLORS } from '../../theme';
-import { type MinerStats, type SortOption, FONTS } from './types';
+import {
+  type MinerStats,
+  type SortOption,
+  type LeaderboardVariant,
+  FONTS,
+} from './types';
 
 // Re-export MinerStats for backward compatibility
 export type { MinerStats } from './types';
@@ -19,12 +24,14 @@ interface TopMinersTableProps {
   miners: MinerStats[];
   isLoading?: boolean;
   onSelectMiner: (githubId: string) => void;
+  variant?: LeaderboardVariant;
 }
 
 const TopMinersTable: React.FC<TopMinersTableProps> = ({
   miners,
   isLoading,
   onSelectMiner,
+  variant = 'oss',
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortOption, setSortOption] = useState<SortOption>('totalScore');
@@ -39,6 +46,8 @@ const TopMinersTable: React.FC<TopMinersTableProps> = ({
           return (b.usdPerDay || 0) - (a.usdPerDay || 0);
         case 'totalPRs':
           return (b.totalPRs || 0) - (a.totalPRs || 0);
+        case 'totalIssues':
+          return (b.totalIssues || 0) - (a.totalIssues || 0);
         case 'credibility':
           return (b.credibility || 0) - (a.credibility || 0);
         default:
@@ -49,7 +58,6 @@ const TopMinersTable: React.FC<TopMinersTableProps> = ({
   // Process and filter miners
   const groupedMiners = useMemo(() => {
     let result = [...miners];
-    result = result.map((miner, index) => ({ ...miner, rank: index + 1 }));
 
     // 1. Filter by Search
     if (searchQuery) {
@@ -65,16 +73,23 @@ const TopMinersTable: React.FC<TopMinersTableProps> = ({
     const eligible = result.filter((m) => m.isEligible);
     const ineligible = result.filter((m) => !m.isEligible);
 
+    const rankVisibleOrder = (list: MinerStats[]) =>
+      list.map((miner, index) => ({ ...miner, rank: index + 1 }));
+
+    const ineligibleSortOption =
+      variant === 'discoveries' || sortOption !== 'totalScore'
+        ? sortOption
+        : 'credibility';
+
     // 3. Sort each Group
     return {
-      eligible: sortMinersList(eligible, sortOption),
-      ineligible: sortMinersList(
-        ineligible,
-        sortOption === 'totalScore' ? 'credibility' : sortOption,
+      eligible: rankVisibleOrder(sortMinersList(eligible, sortOption)),
+      ineligible: rankVisibleOrder(
+        sortMinersList(ineligible, ineligibleSortOption),
       ),
       totalFiltered: result.length,
     };
-  }, [miners, searchQuery, sortOption]);
+  }, [miners, searchQuery, sortOption, variant]);
 
   if (isLoading) {
     return (
@@ -90,7 +105,11 @@ const TopMinersTable: React.FC<TopMinersTableProps> = ({
       <SectionCard
         title={`Miners (${groupedMiners.totalFiltered})`}
         centerContent={
-          <SortButtons sortOption={sortOption} onSortChange={setSortOption} />
+          <SortButtons
+            sortOption={sortOption}
+            onSortChange={setSortOption}
+            variant={variant}
+          />
         }
         action={<SearchField value={searchQuery} onChange={setSearchQuery} />}
         sx={{
@@ -120,6 +139,7 @@ const TopMinersTable: React.FC<TopMinersTableProps> = ({
             }}
             onSelectMiner={onSelectMiner}
             defaultExpanded
+            variant={variant}
           />
         )}
 
@@ -134,6 +154,7 @@ const TopMinersTable: React.FC<TopMinersTableProps> = ({
               bg: 'rgba(255, 255, 255, 0.02)',
             }}
             onSelectMiner={onSelectMiner}
+            variant={variant}
           />
         )}
 
@@ -152,11 +173,13 @@ const TopMinersTable: React.FC<TopMinersTableProps> = ({
 interface SortButtonsProps {
   sortOption: SortOption;
   onSortChange: (option: SortOption) => void;
+  variant: LeaderboardVariant;
 }
 
 const SortButtons: React.FC<SortButtonsProps> = ({
   sortOption,
   onSortChange,
+  variant,
 }) => (
   <Box
     sx={{
@@ -170,6 +193,9 @@ const SortButtons: React.FC<SortButtonsProps> = ({
       { label: 'Score', value: 'totalScore' },
       { label: 'Earnings', value: 'usdPerDay' },
       { label: 'PRs', value: 'totalPRs' },
+      ...(variant === 'discoveries'
+        ? [{ label: 'Issues', value: 'totalIssues' as const }]
+        : []),
       { label: 'Credibility', value: 'credibility' },
     ].map((option) => (
       <Box
