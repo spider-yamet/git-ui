@@ -169,9 +169,20 @@ const TopMinersTable: React.FC<TopMinersTableProps> = ({
       }
     });
 
-  // Process and filter miners
+  // Rank is computed on the full sorted leaderboard so each miner keeps their
+  // true position regardless of filters. Filtering (search / eligibility) then
+  // only hides rows without renumbering the ones that remain.
+  const rankedMiners = useMemo(
+    () =>
+      sortMinersList(miners, sortOption).map((miner, index) => ({
+        ...miner,
+        rank: index + 1,
+      })),
+    [miners, sortOption],
+  );
+
   const filteredMiners = useMemo(() => {
-    let result = [...miners];
+    let result = rankedMiners;
 
     if (searchQuery) {
       const lowerQuery = searchQuery.toLowerCase();
@@ -188,11 +199,8 @@ const TopMinersTable: React.FC<TopMinersTableProps> = ({
       result = result.filter((m) => !m.isEligible);
     }
 
-    return sortMinersList(result, sortOption).map((miner, index) => ({
-      ...miner,
-      rank: index + 1,
-    }));
-  }, [miners, searchQuery, eligibilityFilter, sortOption]);
+    return result;
+  }, [rankedMiners, searchQuery, eligibilityFilter]);
 
   useEffect(() => {
     if (visibleCount <= filteredMiners.length) return;
